@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Configure - Kirimemail{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Left: Configuration Form -->
+    <div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-1">Recipients</h2>
+            <p class="text-sm text-gray-500 mb-4">
+                File: <span id="fileInfoDisplay" class="font-medium text-gray-700"></span>
+                <a href="/" class="text-blue-500 hover:underline ml-2">Change</a>
+            </p>
+
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Email addresses <span class="text-gray-400">(one per line)</span>
+            </label>
+            <textarea id="emailList" rows="6"
+                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="alice@example.com&#10;bob@example.com&#10;charlie@example.com"></textarea>
+            <p id="emailCount" class="text-xs text-gray-400 mt-1">0 recipients</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Email Content</h2>
+
+            <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <input type="text" id="emailSubject" value="📚 Materi Kelas TTS SWING - Khusus Peserta"
+                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4">
+
+            <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea id="emailBody" rows="4"
+                class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Write your message here...">Hai! 👋
+
+File materi Kelas TTS SWING kamu sudah siap di-download di bawah ini.
+
+⚠️ Perhatian:
+File ini HANYA untuk kamu sebagai peserta terdaftar. Jangan di-share, forward, atau sebarkan ke siapapun ya. Setiap file sudah ada watermark nama email kamu — jadi kalau bocor, ketahuan dari siapa asalnya 😉
+
+Selamat belajar!</textarea>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <button onclick="toggleOptions()" class="flex items-center justify-between w-full text-left">
+                <h2 class="text-xl font-semibold text-gray-800">Watermark Options</h2>
+                <svg id="optionsArrow" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+
+            <div id="optionsPanel" class="hidden mt-4 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Font Size: <span id="fontSizeVal">42</span>pt</label>
+                        <input type="range" id="fontSize" min="20" max="80" value="42" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Opacity: <span id="opacityVal">15</span>%</label>
+                        <input type="range" id="opacity" min="5" max="40" value="15" class="w-full">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rotation: <span id="rotationVal">45</span>&deg;</label>
+                        <input type="range" id="rotation" min="0" max="90" value="45" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Spacing X: <span id="spacingXVal">200</span></label>
+                        <input type="range" id="spacingX" min="100" max="400" value="200" class="w-full">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                    <div class="flex gap-2">
+                        <button onclick="setColor(0.7,0.7,0.7)" class="w-8 h-8 rounded-full bg-gray-400 border-2 border-gray-500 color-btn" data-r="0.7" data-g="0.7" data-b="0.7"></button>
+                        <button onclick="setColor(0.9,0.3,0.3)" class="w-8 h-8 rounded-full bg-red-400 border-2 border-transparent color-btn" data-r="0.9" data-g="0.3" data-b="0.3"></button>
+                        <button onclick="setColor(0.3,0.3,0.9)" class="w-8 h-8 rounded-full bg-blue-400 border-2 border-transparent color-btn" data-r="0.3" data-g="0.3" data-b="0.9"></button>
+                        <button onclick="setColor(0.3,0.7,0.3)" class="w-8 h-8 rounded-full bg-green-400 border-2 border-transparent color-btn" data-r="0.3" data-g="0.7" data-b="0.3"></button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+                    <input type="checkbox" id="rasterize" class="w-4 h-4 text-blue-600 rounded">
+                    <label for="rasterize" class="text-sm text-gray-700">
+                        <span class="font-medium">High Security Mode</span>
+                        <span class="text-gray-400">— Rasterize pages (text no longer selectable)</span>
+                    </label>
+                </div>
+                <div id="dpiRow" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Rasterize DPI: <span id="dpiVal">200</span></label>
+                    <input type="range" id="dpi" min="150" max="300" value="200" class="w-full">
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Button -->
+        <div class="text-center">
+            <button id="sendBtn" onclick="sendEmails()"
+                class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium py-3 px-10 rounded-lg transition-colors w-full text-lg"
+                disabled>
+                Send Watermarked PDFs
+            </button>
+            <p id="sendHint" class="text-xs text-gray-400 mt-2">Add at least one valid email to send</p>
+        </div>
+
+        <!-- Error display -->
+        <div id="sendError" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
+    </div>
+
+    <!-- Right: Preview Panel -->
+    <div>
+        <div class="sticky top-8">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold text-gray-800">Live Preview</h2>
+                    <span id="previewStatus" class="text-xs text-gray-400">Waiting for input...</span>
+                </div>
+                <div class="preview-frame overflow-hidden" style="height: 600px;">
+                    <iframe id="previewFrame" class="w-full h-full" style="border: none;"></iframe>
+                    <div id="previewPlaceholder" class="flex items-center justify-center h-full text-gray-400 text-sm">
+                        Enter an email above to preview the watermark
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let colorR = 0.7, colorG = 0.7, colorB = 0.7;
+    let previewTimeout = null;
+    let lastPreviewEmail = null;
+
+    // Init: check for uploaded file
+    const fileId = sessionStorage.getItem('file_id');
+    const filename = sessionStorage.getItem('filename');
+    const pageCount = sessionStorage.getItem('page_count');
+
+    if (!fileId) {
+        window.location.href = '/';
+    } else {
+        document.getElementById('fileInfoDisplay').textContent =
+            `${filename} (${pageCount} page${pageCount !== '1' ? 's' : ''})`;
+    }
+
+    // Email list handling
+    const emailList = document.getElementById('emailList');
+    emailList.addEventListener('input', () => {
+        updateEmailCount();
+        schedulePreview();
+    });
+
+    function getEmails() {
+        return emailList.value.split('\n')
+            .map(e => e.trim())
+            .filter(e => e.length > 0);
+    }
+
+    function getValidEmails() {
+        return getEmails().filter(e => e.includes('@') && e.split('@')[1].includes('.'));
+    }
+
+    function updateEmailCount() {
+        const emails = getEmails();
+        const valid = getValidEmails();
+        const count = emails.length;
+        const validCount = valid.length;
+        document.getElementById('emailCount').textContent =
+            `${count} recipient${count !== 1 ? 's' : ''}${count !== validCount ? ` (${count - validCount} invalid)` : ''}`;
+
+        const sendBtn = document.getElementById('sendBtn');
+        const sendHint = document.getElementById('sendHint');
+        if (validCount > 0) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = `Send to ${validCount} Recipient${validCount !== 1 ? 's' : ''}`;
+            sendHint.classList.add('hidden');
+        } else {
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Send Watermarked PDFs';
+            sendHint.classList.remove('hidden');
+        }
+    }
+
+    // Options toggle
+    function toggleOptions() {
+        const panel = document.getElementById('optionsPanel');
+        const arrow = document.getElementById('optionsArrow');
+        panel.classList.toggle('hidden');
+        arrow.style.transform = panel.classList.contains('hidden') ? '' : 'rotate(180deg)';
+    }
+
+    // Range sliders display
+    ['fontSize', 'opacity', 'rotation', 'spacingX', 'dpi'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => {
+                const valEl = document.getElementById(id + 'Val');
+                if (valEl) valEl.textContent = el.value;
+                if (id === 'dpi') return; // dpi doesn't affect preview
+                schedulePreview();
+            });
+        }
+    });
+
+    document.getElementById('rasterize').addEventListener('change', (e) => {
+        document.getElementById('dpiRow').classList.toggle('hidden', !e.target.checked);
+    });
+
+    function setColor(r, g, b) {
+        colorR = r; colorG = g; colorB = b;
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            const match = btn.dataset.r == r && btn.dataset.g == g && btn.dataset.b == b;
+            btn.style.borderColor = match ? '#3b82f6' : 'transparent';
+        });
+        schedulePreview();
+    }
+
+    // Preview
+    function schedulePreview() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(requestPreview, 500);
+    }
+
+    function requestPreview() {
+        const emails = getEmails();
+        const previewEmail = emails.length > 0 ? emails[0] : 'preview@example.com';
+
+        if (previewEmail === lastPreviewEmail && !optionsChanged()) return;
+        lastPreviewEmail = previewEmail;
+
+        const status = document.getElementById('previewStatus');
+        status.textContent = 'Generating preview...';
+
+        const body = {
+            file_id: fileId,
+            email: previewEmail,
+            font_size: parseInt(document.getElementById('fontSize').value),
+            opacity: parseInt(document.getElementById('opacity').value) / 100,
+            rotation: parseInt(document.getElementById('rotation').value),
+            color_r: colorR,
+            color_g: colorG,
+            color_b: colorB,
+            spacing_x: parseInt(document.getElementById('spacingX').value),
+            spacing_y: 150,
+        };
+
+        fetch('/api/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Preview failed');
+            return res.blob();
+        })
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const frame = document.getElementById('previewFrame');
+            frame.src = url;
+            frame.classList.remove('hidden');
+            document.getElementById('previewPlaceholder').classList.add('hidden');
+            status.textContent = `Preview for ${previewEmail}`;
+        })
+        .catch(err => {
+            status.textContent = 'Preview failed';
+        });
+    }
+
+    function optionsChanged() { return true; }
+
+    // Send
+    async function sendEmails() {
+        const validEmails = getValidEmails();
+        if (validEmails.length === 0) return;
+
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="spinner inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></span> Processing...';
+
+        const body = {
+            file_id: fileId,
+            emails: validEmails,
+            subject: document.getElementById('emailSubject').value,
+            message: document.getElementById('emailBody').value,
+            font_size: parseInt(document.getElementById('fontSize').value),
+            opacity: parseInt(document.getElementById('opacity').value) / 100,
+            rotation: parseInt(document.getElementById('rotation').value),
+            color_r: colorR,
+            color_g: colorG,
+            color_b: colorB,
+            spacing_x: parseInt(document.getElementById('spacingX').value),
+            spacing_y: 150,
+            rasterize: document.getElementById('rasterize').checked,
+            dpi: parseInt(document.getElementById('dpi').value),
+        };
+
+        try {
+            const res = await fetch('/api/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail);
+            }
+            const data = await res.json();
+            window.location.href = `/status/${data.job_id}`;
+        } catch (err) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = `Send to ${validEmails.length} Recipient${validEmails.length !== 1 ? 's' : ''}`;
+            const errorEl = document.getElementById('sendError');
+            errorEl.textContent = err.message || 'Failed to start sending';
+            errorEl.classList.remove('hidden');
+        }
+    }
+</script>
+{% endblock %}

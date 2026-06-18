@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Upload PDF - Kirimemail{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Upload Your PDF</h1>
+        <p class="text-gray-500">Upload a PDF file to add personalized watermarks for each recipient</p>
+    </div>
+
+    <!-- Upload Zone -->
+    <div id="dropZone" class="drop-zone p-12 text-center cursor-pointer bg-white">
+        <input type="file" id="fileInput" accept=".pdf" class="hidden">
+        <div id="uploadPrompt">
+            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            <p class="text-lg text-gray-600 mb-2">Drag & drop your PDF here</p>
+            <p class="text-sm text-gray-400">or click to browse files</p>
+            <p class="text-xs text-gray-400 mt-2">Maximum file size: 50MB</p>
+        </div>
+
+        <!-- Loading state -->
+        <div id="uploadLoading" class="hidden">
+            <svg class="w-10 h-10 mx-auto text-blue-500 spinner mb-3" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <p class="text-gray-600">Uploading...</p>
+        </div>
+
+        <!-- Success state -->
+        <div id="uploadSuccess" class="hidden">
+            <svg class="w-12 h-12 mx-auto text-green-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p id="fileName" class="text-lg font-medium text-gray-700 mb-1"></p>
+            <p id="fileInfo" class="text-sm text-gray-500"></p>
+        </div>
+    </div>
+
+    <!-- Error message -->
+    <div id="uploadError" class="hidden mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
+
+    <!-- Next button -->
+    <div id="nextBtn" class="hidden mt-6 text-center fade-in">
+        <button onclick="goToConfigure()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors">
+            Next: Configure Recipients &rarr;
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const uploadLoading = document.getElementById('uploadLoading');
+    const uploadSuccess = document.getElementById('uploadSuccess');
+    const uploadError = document.getElementById('uploadError');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let uploadedFileId = null;
+    let uploadedFileName = null;
+
+    // Click to browse
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // Drag events
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            showError('Only PDF files are allowed.');
+            return;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+            showError('File too large. Maximum size is 50MB.');
+            return;
+        }
+
+        uploadLoading.classList.remove('hidden');
+        uploadPrompt.classList.add('hidden');
+        uploadSuccess.classList.add('hidden');
+        uploadError.classList.add('hidden');
+        nextBtn.classList.add('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/upload', { method: 'POST', body: formData })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => { throw new Error(err.detail); });
+                return res.json();
+            })
+            .then(data => {
+                uploadedFileId = data.file_id;
+                uploadedFileName = data.filename;
+                sessionStorage.setItem('file_id', data.file_id);
+                sessionStorage.setItem('filename', data.filename);
+                sessionStorage.setItem('page_count', data.page_count);
+
+                document.getElementById('fileName').textContent = data.filename;
+                document.getElementById('fileInfo').textContent =
+                    `${data.page_count} page${data.page_count !== 1 ? 's' : ''} • ${data.size_mb} MB`;
+
+                uploadLoading.classList.add('hidden');
+                uploadSuccess.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+            })
+            .catch(err => {
+                uploadLoading.classList.add('hidden');
+                uploadPrompt.classList.remove('hidden');
+                showError(err.message || 'Upload failed. Please try again.');
+            });
+    }
+
+    function showError(msg) {
+        uploadError.textContent = msg;
+        uploadError.classList.remove('hidden');
+    }
+
+    function goToConfigure() {
+        window.location.href = '/configure';
+    }
+</script>
+{% endblock %}

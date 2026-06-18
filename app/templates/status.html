@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Sending Status - Kirimemail{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Phase 1: Watermarking -->
+    <div id="phaseWatermark" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+        <div class="flex items-center gap-3 mb-3">
+            <div id="wmSpinner" class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full spinner"></div>
+            <div id="wmCheck" class="hidden w-6 h-6 text-green-500">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <h2 class="text-lg font-semibold text-gray-800">Phase 1: Generating Watermarks</h2>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <div id="wmBar" class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p id="wmText" class="text-sm text-gray-500">0 / 0 generated</p>
+    </div>
+
+    <!-- Phase 2: Drive Upload -->
+    <div id="phaseDrive" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4 opacity-40">
+        <div class="flex items-center gap-3 mb-3">
+            <div id="driveSpinner" class="hidden w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full spinner"></div>
+            <div id="driveCheck" class="hidden w-6 h-6 text-green-500">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div id="driveWait" class="w-5 h-5 rounded-full bg-gray-300"></div>
+            <h2 class="text-lg font-semibold text-gray-800">Phase 2: Get Links</h2>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <div id="driveBar" class="bg-purple-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p id="driveText" class="text-sm text-gray-500">Waiting for watermarks...</p>
+    </div>
+
+    <!-- Phase 3: Sending -->
+    <div id="phaseSending" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4 opacity-40">
+        <div class="flex items-center gap-3 mb-3">
+            <div id="sendSpinner" class="hidden w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full spinner"></div>
+            <div id="sendCheck" class="hidden w-6 h-6 text-green-500">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div id="sendWait" class="w-5 h-5 rounded-full bg-gray-300"></div>
+            <h2 class="text-lg font-semibold text-gray-800">Phase 3: Sending Emails</h2>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <div id="sendBar" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p id="sendText" class="text-sm text-gray-500">Waiting for links...</p>
+    </div>
+
+    <!-- Failed emails table -->
+    <div id="failedTable" class="hidden bg-white rounded-lg shadow-sm border border-red-200 overflow-hidden mt-4">
+        <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+            <h3 class="text-sm font-semibold text-red-700">Failed Emails</h3>
+        </div>
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="text-left py-2 px-4 font-medium text-gray-600">Email</th>
+                    <th class="text-left py-2 px-4 font-medium text-gray-600">Error</th>
+                </tr>
+            </thead>
+            <tbody id="failedBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Done summary -->
+    <div id="doneSummary" class="hidden bg-white rounded-lg shadow-sm border border-green-200 p-6 mt-4 text-center fade-in">
+        <svg class="w-14 h-14 mx-auto text-green-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h2 class="text-2xl font-bold text-gray-800 mb-1">All Done!</h2>
+        <p id="summaryText" class="text-gray-500 mb-4"></p>
+        <a href="/" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+            Send More Emails
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const jobId = "{{ job_id }}";
+    let pollInterval = null;
+
+    function pollStatus() {
+        fetch(`/api/status/${jobId}`)
+            .then(res => res.json())
+            .then(data => updateUI(data))
+            .catch(err => {
+                clearInterval(pollInterval);
+            });
+    }
+
+    function completePhase(barId, spinnerId, checkId) {
+        const bar = document.getElementById(barId);
+        bar.style.width = '100%';
+        bar.classList.remove('bg-blue-500', 'bg-purple-500');
+        bar.classList.add('bg-green-500');
+        document.getElementById(spinnerId).classList.add('hidden');
+        document.getElementById(checkId).classList.remove('hidden');
+    }
+
+    function activatePhase(phaseId, waitId, spinnerId) {
+        document.getElementById(phaseId).classList.remove('opacity-40');
+        document.getElementById(waitId).classList.add('hidden');
+        document.getElementById(spinnerId).classList.remove('hidden');
+    }
+
+    function updateUI(data) {
+        const total = data.total;
+        const wmPct = total > 0 ? Math.round((data.wm_completed / total) * 100) : 0;
+        const drivePct = total > 0 ? Math.round((data.drive_completed / total) * 100) : 0;
+        const sendPct = total > 0 ? Math.round((data.send_completed / total) * 100) : 0;
+
+        // Phase 1: Watermark
+        document.getElementById('wmBar').style.width = `${wmPct}%`;
+        document.getElementById('wmText').textContent = `${data.wm_completed} / ${total} generated`;
+
+        // Watermark complete → activate Drive phase
+        if (data.phase === 'drive' || data.phase === 'sending' || data.phase === 'done') {
+            document.getElementById('wmText').textContent = `${total} / ${total} generated`;
+            completePhase('wmBar', 'wmSpinner', 'wmCheck');
+            activatePhase('phaseDrive', 'driveWait', 'driveSpinner');
+        }
+
+        // Phase 2: Drive Upload
+        if (data.phase === 'drive' || data.phase === 'sending' || data.phase === 'done') {
+            document.getElementById('driveBar').style.width = `${drivePct}%`;
+            document.getElementById('driveText').textContent = `${data.drive_completed} / ${total} uploaded`;
+        }
+
+        // Drive complete → activate Sending phase
+        if (data.phase === 'sending' || data.phase === 'done') {
+            completePhase('driveBar', 'driveSpinner', 'driveCheck');
+            activatePhase('phaseSending', 'sendWait', 'sendSpinner');
+        }
+
+        // Phase 3: Sending
+        if (data.phase === 'sending' || data.phase === 'done') {
+            document.getElementById('sendBar').style.width = `${sendPct}%`;
+            document.getElementById('sendText').textContent = `${data.send_completed} / ${total} sent`;
+        }
+
+        if (data.phase === 'done') {
+            document.getElementById('sendSpinner').classList.add('hidden');
+            document.getElementById('sendCheck').classList.remove('hidden');
+            document.getElementById('sendBar').classList.remove('bg-green-500');
+            document.getElementById('sendBar').classList.add(data.failed.length > 0 ? 'bg-yellow-500' : 'bg-green-500');
+
+            const successCount = data.send_completed - data.failed.length;
+            document.getElementById('summaryText').textContent =
+                `${successCount} email${successCount !== 1 ? 's' : ''} sent successfully` +
+                (data.failed.length > 0 ? `, ${data.failed.length} failed` : '');
+            document.getElementById('doneSummary').classList.remove('hidden');
+
+            clearInterval(pollInterval);
+        }
+
+        // Failed table
+        if (data.failed.length > 0) {
+            document.getElementById('failedTable').classList.remove('hidden');
+            const tbody = document.getElementById('failedBody');
+            tbody.innerHTML = '';
+            data.failed.forEach(f => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-100';
+                tr.innerHTML = `<td class="py-2 px-4 text-gray-700">${f.email}</td><td class="py-2 px-4 text-red-600 text-xs">${f.error}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    pollInterval = setInterval(pollStatus, 2000);
+    pollStatus();
+</script>
+{% endblock %}
