@@ -1,77 +1,127 @@
-# Kirimemail - PDF Watermark & Mass Email Tool
+# Kirimemail — PDF Watermark & Mass Email Tool
 
-## Setup
+Aplikasi untuk mengirim PDF yang sudah di-watermark secara massal via email. Setiap penerima mendapat salinan PDF unik dengan watermark email mereka — untuk pelacakan kebocoran dokumen.
 
-1. **Install dependencies:**
+## Persyaratan
+
+- **Python 3.10+** (direkomendasikan 3.12)
+- Akun Gmail dengan **2FA aktif** + [App Password](https://myaccount.google.com/apppasswords) (16 karakter)
+- *(Opsional)* Google Cloud project untuk integrasi Google Drive
+
+## Quick Start
+
+### 1. Clone & Install
+
 ```bash
+git clone https://github.com/ahaditastudio/kirim-email.git
+cd kirim-email
 pip install -r requirements.txt
 ```
 
-2. **Configure Gmail SMTP:**
-   - Go to https://myaccount.google.com/apppasswords
-   - Enable 2FA on your Google account if not already enabled
-   - Generate an App Password (16 characters)
-   - Copy `.env.example` to `.env` and fill in your credentials:
+### 2. Konfigurasi Environment
+
 ```bash
 cp .env.example .env
 ```
 
-3. **Run the server:**
+Edit file `.env`:
+
+| Variabel | Default | Deskripsi |
+|----------|---------|-----------|
+| `SMTP_HOST` | `smtp.gmail.com` | SMTP server |
+| `SMTP_PORT` | `587` | SMTP port (STARTTLS) |
+| `SMTP_USER` | — | Alamat Gmail kamu |
+| `SMTP_PASSWORD` | — | Gmail App Password (16 karakter) |
+| `BASE_URL` | `http://localhost:8000` | URL aplikasi (untuk fallback download link) |
+| `DRIVE_FOLDER_ID` | — | *(Opsional)* ID folder Google Drive untuk upload PDF |
+| `MAX_UPLOAD_SIZE_MB` | `50` | Ukuran maksimal PDF upload |
+| `MAX_RECIPIENTS` | `100` | Maksimal penerima per pengiriman |
+
+**Cara mendapatkan Gmail App Password:**
+1. Buka https://myaccount.google.com/apppasswords
+2. Pastikan 2FA sudah aktif di akun Google kamu
+3. Buat App Password baru (16 karakter)
+4. Copy dan paste ke `SMTP_PASSWORD` di file `.env`
+
+### 3. Setup Google Drive (Opsional)
+
+Jika ingin PDF otomatis di-upload ke Google Drive:
+
+1. Buat project di [Google Cloud Console](https://console.cloud.google.com/)
+2. Aktifkan **Google Drive API**
+3. Buat **OAuth 2.0 Client ID** (tipe: Desktop App)
+4. Download file JSON credentials, rename jadi `client_secrets.json` dan taruh di root project
+5. Jalankan autentikasi:
+```bash
+python authenticate_drive.py
+```
+6. Authorize di browser yang terbuka — akan menghasilkan file `drive_token.json`
+
+> **Tanpa Google Drive**, aplikasi tetap jalan — link download akan menggunakan server lokal sebagai fallback.
+
+### 4. Jalankan
+
 ```bash
 python run.py
 ```
 
-4. **Open in browser:** http://localhost:8000
+Buka browser: **http://localhost:8000**
 
-## Usage
+## Cara Pakai
 
-1. **Upload** a PDF file (drag-drop or click)
-2. **Configure** recipients (one email per line), subject, message body
-3. **Preview** the watermark with live preview
-4. **Send** - each recipient gets a uniquely watermarked PDF
-5. **Track** sending progress in real-time
+1. **Upload** — Drag & drop atau pilih file PDF
+2. **Configure** — Isi daftar email penerima (satu per baris), subject, dan isi pesan
+3. **Preview** — Lihat live preview watermark di halaman pertama
+4. **Send** — Proses berjalan otomatis:
+   - Phase 1: Generate PDF dengan watermark unik per penerima (parallel)
+   - Phase 2: Get download links (upload ke Google Drive)
+   - Phase 3: Kirim email ke semua penerima
+5. **Track** — Pantau progress real-time di halaman status
 
-## Watermark Security
+## Watermark
 
-- **Default mode**: Dual-layer vector watermark (above + below content) with content stream merging. Defeats casual and most technical removal attempts.
-- **High Security Mode** (toggle in UI): Rasterizes entire pages at 200 DPI, making watermark pixel-inseparable from content. Trade-off: larger file size, text no longer selectable.
+- **Mode Default:** Dual-layer vector watermark (di atas + di bawah konten). Sulit dihapus secara kasual maupun teknis.
+- **High Security Mode:** Rasterize seluruh halaman di 200 DPI — watermark menyatu dengan konten pixel. Trade-off: file lebih besar, teks tidak bisa di-select.
 
-## Gmail Limits
+## Batasan Gmail
 
-- Personal Gmail: 500 emails/day
-- Google Workspace: 2,000 emails/day
-- The app limits concurrent sends to 5 with 1s delay between sends
-
-## Configuration
-
-Edit `.env` file:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| SMTP_HOST | smtp.gmail.com | SMTP server |
-| SMTP_PORT | 587 | SMTP port (STARTTLS) |
-| SMTP_USER | (empty) | Your Gmail address |
-| SMTP_PASSWORD | (empty) | Gmail App Password (16 chars) |
-| MAX_UPLOAD_SIZE_MB | 50 | Max PDF upload size |
-| MAX_RECIPIENTS | 100 | Max recipients per job |
+- Gmail personal: **500 email/hari**
+- Google Workspace: **2.000 email/hari**
+- Aplikasi mengirim secara sequential dengan delay 0.5 detik antar email
 
 ## Project Structure
 
 ```
 kirimemail/
+├── run.py                         # Entry point (uvicorn)
+├── requirements.txt               # Python dependencies
+├── .env.example                   # Template environment variables
+├── authenticate_drive.py          # Script setup OAuth Google Drive
 ├── app/
-│   ├── main.py              # FastAPI app
-│   ├── config.py            # Settings from .env
+│   ├── main.py                    # FastAPI app setup
+│   ├── config.py                  # Settings dari .env
 │   ├── routers/
-│   │   ├── pages.py         # HTML routes
-│   │   └── api.py           # API endpoints
+│   │   ├── pages.py               # HTML routes (/, /configure, /status)
+│   │   └── api.py                 # API endpoints (upload, preview, send)
 │   ├── services/
-│   │   ├── watermark_service.py  # PDF watermarking
-│   │   ├── email_service.py      # Gmail SMTP
-│   │   └── pdf_service.py        # PDF helpers
-│   ├── templates/           # Jinja2 HTML
-│   └── static/js/           # Frontend JS
-├── uploads/                 # Temp uploads (gitignored)
-├── output/                  # Temp output (gitignored)
-└── run.py
+│   │   ├── watermark_service.py   # PDF watermarking engine (PyMuPDF + ReportLab)
+│   │   ├── email_service.py       # SMTP batch sending + job tracking
+│   │   ├── drive_service.py       # Google Drive upload (OAuth2)
+│   │   └── pdf_service.py         # PDF metadata extraction
+│   ├── templates/                 # Jinja2 HTML templates
+│   └── static/                    # CSS & JS
+├── uploads/                       # Temporary uploaded PDFs (gitignored)
+└── output/                        # Temporary watermarked PDFs (gitignored)
 ```
+
+## Tech Stack
+
+- **Backend:** Python, FastAPI, Uvicorn
+- **PDF:** PyMuPDF (fitz) + ReportLab
+- **Email:** smtplib (SMTP/Gmail)
+- **Cloud:** Google Drive API v3 (OAuth2)
+- **Frontend:** Vanilla JS, Tailwind CSS (CDN), Jinja2
+
+## License
+
+MIT
